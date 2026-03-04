@@ -1,0 +1,52 @@
+name: Build Flutter App
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Build target (apk, ipa, web)'
+        required: true
+        default: apk
+        type: choice
+        options: [apk, ipa, web]
+      build_id:
+        description: 'Unique build identifier'
+        required: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build APK
+        if: inputs.platform == 'apk'
+        run: flutter build apk --release
+
+      - name: Build iOS (no codesign)
+        if: inputs.platform == 'ipa'
+        run: flutter build ipa --no-codesign
+
+      - name: Build Web
+        if: inputs.platform == 'web'
+        run: flutter build web --web-renderer canvaskit
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.platform }}-${{ inputs.build_id }}
+          path: |
+            build/app/outputs/flutter-apk/app-release.apk
+            build/ios/ipa/*.ipa
+            build/web/**
+          if-no-files-found: error
